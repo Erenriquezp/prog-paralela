@@ -1,0 +1,50 @@
+# --- Build Artifacts ---
+# Ignora la carpeta donde se compila el código (binarios, objetos, etc.)
+build/
+bin/
+obj/
+
+# --- vcpkg (Dependencias) ---
+# No subimos las librerías instaladas (SFML, fmt) porque pesan cientos de MB.
+# El colaborador debe instalarlas usando tu vcpkg.json o comandos manuales.
+vcpkg_installed/
+vcpkg/
+
+# --- CMake ---
+# Ignora archivos temporales y configuraciones locales de CMake
+CMakeUserPresets.json
+.cmake/
+CMakeCache.txt
+CMakeFiles/
+CMakeScripts/
+cmake_install.cmake
+install_manifest.txt
+Makefile
+
+# --- VS Code ---
+# Ignora la configuración personal de tu editor
+.vscode/*
+!.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/tasks.json
+# Ignora el caché de C++ de VS Code
+.cache/
+.ipch/
+
+# --- Compiladores y SO ---
+# Archivos temporales de MinGW/GCC
+*.o
+*.a
+*.exe
+*.dll
+*.so
+*.dylib
+*.pdb
+*.idb
+
+# Archivos de sistema
+Thumbs.db
+.DS_Store
+
+# --- Logs ---
+*.log

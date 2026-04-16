@@ -1,0 +1,19 @@
+{
+    "cmake.cmakePath": "C:/tools/mingw64/bin/cmake.exe",
+    "cmake.generator": "Ninja Multi-Config",
+    "cmake.buildDirectory": "${workspaceFolder}/build",
+    "cmake.configureEnvironment": {
+        "PATH": "C:/tools/mingw64/bin;${env:PATH}"
+    },
+    "cmake.buildEnvironment": {
+        "PATH": "C:/tools/mingw64/bin;${env:PATH}"
+    },
+    "cmake.configureSettings": {
+        "CMAKE_C_COMPILER": "C:/tools/mingw64/bin/gcc.exe",
+        "CMAKE_CXX_COMPILER": "C:/tools/mingw64/bin/g++.exe",
+        "CMAKE_MAKE_PROGRAM": "C:/tools/mingw64/bin/ninja.exe",
+        "CMAKE_TOOLCHAIN_FILE": "C:/tools/vcpkg-2026.03.18/scripts/buildsystems/vcpkg.cmake",
+        "VCPKG_TARGET_TRIPLET": "x64-mingw-dynamic"
+    },
+    "cmake.parallelJobs": 8
+}
