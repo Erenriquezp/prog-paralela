@@ -25,7 +25,7 @@ ninja --version
 
 ### 2. Configuración de vcpkg
 ```powershell
-# Inicializar el gestor (solo la primera vez)
+# Inicializar el gestor (solo la primera vez) en C:\tools\vcpkg-2026.03.18>
 .\bootstrap-vcpkg.bat
 
 # Instalar dependencias del curso (Triplet x64-mingw-dynamic)
