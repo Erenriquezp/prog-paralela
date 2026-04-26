@@ -45,7 +45,7 @@ void julia_simd(double x_min, double y_min, double x_max, double y_max, uint32_t
             __m256 ci = _mm256_sub_ps(ymax, _mm256_mul_ps(my, yscale));
 
             //verificar si los 8 complejos están acotados o no
-            int iter = 0;
+            int iter = 1;
             __m256 mk = _mm256_set1_ps(iter);
             
             __m256 zr = cr; // z0 = creal
@@ -66,7 +66,7 @@ void julia_simd(double x_min, double y_min, double x_max, double y_max, uint32_t
                 __m256 norma2 = _mm256_add_ps(zr2, zi2); // |Z|^2
 
                 // Crear una máscara para los complejos que aún no han escapado (norma2 < 4)
-                __m256 mask = _mm256_cmp_ps(norma2, max_norma, _CMP_LE_OS); // (norma2 <= 4) -> 0xFFFFFFFF, (norma2 > 4) -> 0x00000000
+                __m256 mask = _mm256_cmp_ps(norma2, max_norma, _CMP_LE_OQ); // (norma2 <= 4) -> 0xFFFFFFFF, (norma2 > 4) -> 0x00000000
 
                 // Incrementar el contador de iteraciones solo para los complejos que aún no han escapado
                 mk = _mm256_add_ps(mk, _mm256_and_ps(mask, one)); // mk += (mask & 1)
