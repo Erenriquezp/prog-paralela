@@ -1,4 +1,6 @@
 #include "fractal_serial.h"
+#include "palette.h"
+
 #include <complex>
 
 extern int max_iteraciones;
@@ -16,7 +18,9 @@ uint32_t acotado_1(std::complex<double> z0) {
 
     if (iter<max_iteraciones) {
         // la norma es mayor que 2
-        return 0xFF0000FF; // color rojo
+        //return 0xFF0000FF; // color rojo
+        int index = iter % PALETTE_SIZE;
+        return color_ramp[index];
     } 
 
     return 0xFF000000; // color negreo
@@ -64,7 +68,8 @@ uint32_t acotado_2(double x, double y) {
 
     if (iter<max_iteraciones) {
         // la norma es mayor que 2
-        return 0xFF0000FF; // color rojo
+        int index = iter % PALETTE_SIZE;
+        return color_ramp[index];
     } 
 
     return 0xFF000000; // color negreo

@@ -7,7 +7,8 @@ winlibs-x86_64-posix-seh-gcc-15.2.0-mingw-w64ucrt-14.0.0-r7.7z
 https://github.com/microsoft/vcpkg/releases/tag/2026.03.18
 
 * **Build System:** CMake + Ninja Multi-Config.
-550 558 9245
+
+* **Zoom:** 550 558 9245
 ---
 
 ## 💻 Comandos Esenciales (Consola)
