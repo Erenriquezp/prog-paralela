@@ -4,6 +4,14 @@ import org.lwjgl.*;
 import org.lwjgl.glfw.*;
 import org.lwjgl.opengl.*;
 
+import java.awt.Color;
+import java.awt.Font;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
+import java.awt.image.BufferedImage;
+import java.nio.ByteBuffer;
+import java.nio.IntBuffer;
+
 import static org.lwjgl.glfw.Callbacks.*;
 import static org.lwjgl.glfw.GLFW.*;
 import static org.lwjgl.opengl.GL11.*;
@@ -14,12 +22,22 @@ public class FractalMain {
     // window handle
     private long window;
     private int textureID;
+    private int overlayTextureID;
+
+    private IntBuffer pixelBuffer;
 
     FractalCpu fractalCpu = new FractalCpu();
+    FractalSimd fractalSimd = new FractalSimd();
+
     FPSCounter fpsCounter = new FPSCounter();
 
+    int modo = 1; // 1 cpu - 2 simd
+
     public FractalMain() {
-        FractalCpu fractalCpu = new FractalCpu();
+        fractalCpu = new FractalCpu();
+        fractalSimd = new FractalSimd();
+
+        pixelBuffer = BufferUtils.createIntBuffer(FractalParams.WIDTH * FractalParams.HEIGHT);
     }
 
     public void run() {
@@ -62,10 +80,19 @@ public class FractalMain {
                 glfwSetWindowShouldClose(window, true); // We will detect this in the rendering loop
             if (key == GLFW_KEY_UP && action == GLFW_RELEASE )
                 FractalParams.maxIteraciones += 10;
-            if (key == GLFW_KEY_DOWN && action == GLFW_RELEASE )
+            if (key == GLFW_KEY_DOWN && action == GLFW_RELEASE ) {
                 FractalParams.maxIteraciones -= 10;
-            if (key == GLFW_KEY_DOWN && action == GLFW_RELEASE )
-                FractalParams.maxIteraciones -= 10;
+                if (FractalParams.maxIteraciones < 0)
+                    FractalParams.maxIteraciones = 10;
+            }
+            if (key == GLFW_KEY_1 && action == GLFW_RELEASE) {
+                System.out.println("Modo Java CPU");
+                modo = 1;
+            }
+            if (key == GLFW_KEY_2 && action == GLFW_RELEASE) {
+                System.out.println("Modo C/C++ SIMD");
+                modo = 2;
+            }
         });
 
         GLFWVidMode vidmode = glfwGetVideoMode(glfwGetPrimaryMonitor());
@@ -105,6 +132,7 @@ public class FractalMain {
         glfwShowWindow(window);
 
         setupTexture();
+        setupOverlayTexture();
     }
 
     private void setupTexture() {
@@ -117,6 +145,13 @@ public class FractalMain {
                 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL
         );
 
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    }
+
+    private void setupOverlayTexture() {
+        overlayTextureID = glGenTextures();
+        glBindTexture(GL_TEXTURE_2D, overlayTextureID);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     }
@@ -148,11 +183,21 @@ public class FractalMain {
         }
     }
 
-    private  void paint() {
+    private void paint() {
 
-        System.out.println("FPS: " + fpsCounter.update());
+        int fps = fpsCounter.update();
+        System.out.println("FPS: " + fps);
+        pixelBuffer.clear();
 
-        fractalCpu.julia_serial_2(FractalParams.xMin, FractalParams.yMin, FractalParams.xMax, FractalParams.yMax, FractalParams.WIDTH, FractalParams.HEIGHT);
+        if (modo == 1) {
+            fractalCpu.julia_serial_2(FractalParams.xMin, FractalParams.yMin, FractalParams.xMax, FractalParams.yMax, FractalParams.WIDTH, FractalParams.HEIGHT);
+            pixelBuffer.put(fractalCpu.pixelBuffer);
+        } else if (modo == 2) {
+            fractalSimd.juliaSimd();
+            pixelBuffer.put(fractalSimd.pixelBuffer.asIntBuffer());
+        }
+
+        pixelBuffer.flip();
 
         glEnable(GL_TEXTURE_2D);
         glBindTexture(GL_TEXTURE_2D, textureID);
@@ -160,7 +205,7 @@ public class FractalMain {
         glTexImage2D(
                 GL_TEXTURE_2D, 0, GL_RGBA8,
                 FractalParams.WIDTH, FractalParams.HEIGHT,
-                0, GL_RGBA, GL_UNSIGNED_BYTE, fractalCpu.pixelBuffer
+                0, GL_RGBA, GL_UNSIGNED_BYTE, pixelBuffer
         );
 
         glBegin(GL_QUADS);
@@ -178,6 +223,54 @@ public class FractalMain {
             glVertex2d(1, -1);
         }
         glEnd();
+
+        drawOverlay(fps);
+    }
+
+    private void drawOverlay(int fps) {
+        BufferedImage image = new BufferedImage(FractalParams.WIDTH, FractalParams.HEIGHT, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g = image.createGraphics();
+        try {
+            g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+            g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+            String modoNombre = (modo == 1) ? "Java CPU" : "C++ SIMD";
+
+            g.setColor(Color.WHITE);
+            g.setFont(new Font("SansSerif", Font.BOLD, 24));
+            g.drawString("Julia Set | Iteraciones: " + FractalParams.maxIteraciones + " | FPS: " + fps + " | Modo: " + modoNombre, 10, 28);
+
+            g.setFont(new Font("SansSerif", Font.BOLD, 20));
+            g.drawString("Opciones: [Up/Down] Cambiar iteraciones | [1] Java CPU | [2] C++ SIMD | [Esc] Salir", 10, FractalParams.HEIGHT - 20);
+        } finally {
+            g.dispose();
+        }
+
+        ByteBuffer buffer = ByteBuffer.allocateDirect(FractalParams.WIDTH * FractalParams.HEIGHT * 4);
+        int[] pixels = image.getRGB(0, 0, FractalParams.WIDTH, FractalParams.HEIGHT, null, 0, FractalParams.WIDTH);
+        for (int argb : pixels) {
+            buffer.put((byte) ((argb >> 16) & 0xFF)); // R
+            buffer.put((byte) ((argb >> 8)  & 0xFF)); // G
+            buffer.put((byte) ( argb        & 0xFF)); // B
+            buffer.put((byte) ((argb >> 24) & 0xFF)); // A
+        }
+        buffer.flip();
+
+        glBindTexture(GL_TEXTURE_2D, overlayTextureID);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, FractalParams.WIDTH, FractalParams.HEIGHT, 0, GL_RGBA, GL_UNSIGNED_BYTE, buffer);
+
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        glBindTexture(GL_TEXTURE_2D, overlayTextureID);
+        glBegin(GL_QUADS);
+        {
+            glTexCoord2d(0.0f, 1f); glVertex2d(-1, -1);
+            glTexCoord2d(0.0f, 0.0f); glVertex2d(-1,  1);
+            glTexCoord2d(1f,   0.0f); glVertex2d( 1,  1);
+            glTexCoord2d(1f,   1f);   glVertex2d( 1, -1);
+        }
+        glEnd();
+        glDisable(GL_BLEND);
     }
 
     public static void main(String[] args) {

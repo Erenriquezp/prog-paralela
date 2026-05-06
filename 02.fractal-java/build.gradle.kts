@@ -1,5 +1,10 @@
 plugins {
     id("java")
+    application
+}
+
+application {
+    mainClass.set("com.programacion.paralela.FractalMain")
 }
 
 group = "com.programacion.distribuida"
@@ -21,6 +26,8 @@ dependencies {
     implementation ("org.lwjgl", "lwjgl", classifier = lwjglNatives)
     implementation ("org.lwjgl", "lwjgl-glfw", classifier = lwjglNatives)
     implementation ("org.lwjgl", "lwjgl-opengl", classifier = lwjglNatives)
+
+    implementation("com.github.jnr:jnr-ffi:2.2.19")
 }
 
 tasks.test {

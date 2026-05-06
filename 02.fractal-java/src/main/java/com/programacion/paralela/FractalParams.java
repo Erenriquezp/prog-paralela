@@ -16,25 +16,25 @@ public class FractalParams {
     public static final double cImag = 0.27015;
     public  static final int PALETTE_SIZE = 16;
 
-
+   // Paleta azul -> negro (modo Java CPU)
+   // Formato int little-endian para GL_RGBA GL_UNSIGNED_BYTE: byte[0]=R, byte[1]=G, byte[2]=B, byte[3]=A
+   // Azul puro = R=0x00, G=0x00, B=0xFF, A=0xFF => int = 0xFFFF0000
    public static final int colorRamp[] = {
-
-            (0xFF1010FF),
-            (0xEF1019FF),
-            (0xE01123FF),
-            (0xD1112DFF),
-            (0xC11237FF),
-            (0xB21341FF),
-            (0xA3134BFF),
-            (0x931455FF),
-            (0x84145EFF),
-            (0x751568FF),
-            (0x651672FF),
-            (0x56167CFF),
-            (0x471786FF),
-            (0x371790FF),
-            (0x28189AFF),
-            (0x1919A4FF)
-
+            0xFFFF0000,  // azul puro
+            0xFFEE0000,
+            0xFFDD0000,
+            0xFFCC0000,
+            0xFFBB0000,
+            0xFFAA0000,
+            0xFF990000,
+            0xFF880000,
+            0xFF770000,
+            0xFF660000,
+            0xFF550000,
+            0xFF440000,
+            0xFF330000,
+            0xFF220000,
+            0xFF110000,
+            0xFF080000,  // casi negro
     };
 }

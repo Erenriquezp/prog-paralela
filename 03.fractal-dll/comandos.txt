@@ -1,0 +1,17 @@
+C:\tools\prog-paralela\03.fractal-dll\build\Debug>objdump -p libfractal-dll.dll | findstr "DLL"
+        DLL
+ vma:            Hint    Time      Forward  DLL       First
+        DLL Name: libgcc_s_seh-1.dll
+        DLL Name: libstdc++-6.dll
+        DLL Name: KERNEL32.dll
+        DLL Name: api-ms-win-crt-heap-l1-1-0.dll
+        DLL Name: api-ms-win-crt-private-l1-1-0.dll
+        DLL Name: api-ms-win-crt-runtime-l1-1-0.dll
+        DLL Name: api-ms-win-crt-stdio-l1-1-0.dll
+        DLL Name: api-ms-win-crt-string-l1-1-0.dll
+
+C:\tools\prog-paralela\03.fractal-dll\build\Debug>objdump -p libfractal-dll.dll | findstr "julia_simd"
+        [   0] +base[   1]  0000 _Z10julia_simdddddjjiPj
+
+C:\tools\prog-paralela\03.fractal-dll\build\Debug>objdump -p libfractal-dll.dll | findstr "julia_simd"
+        [  30] +base[  31]  001e julia_simd
