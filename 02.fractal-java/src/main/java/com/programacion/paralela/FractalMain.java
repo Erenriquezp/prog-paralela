@@ -31,7 +31,7 @@ public class FractalMain {
 
     FPSCounter fpsCounter = new FPSCounter();
 
-    int modo = 1; // 1 cpu - 2 simd
+    int modo = 1; // 1 cpu - 2 simd - 3 cpu threads
 
     public FractalMain() {
         fractalCpu = new FractalCpu();
@@ -92,6 +92,10 @@ public class FractalMain {
             if (key == GLFW_KEY_2 && action == GLFW_RELEASE) {
                 System.out.println("Modo C/C++ SIMD");
                 modo = 2;
+            }
+            if (key == GLFW_KEY_3 && action == GLFW_RELEASE) {
+                System.out.println("Modo Java CPU Threads");
+                modo = 3;
             }
         });
 
@@ -195,6 +199,9 @@ public class FractalMain {
         } else if (modo == 2) {
             fractalSimd.juliaSimd();
             pixelBuffer.put(fractalSimd.pixelBuffer.asIntBuffer());
+        } else if (modo == 3) {
+            fractalCpu.julia_threads_2(FractalParams.xMin, FractalParams.yMin, FractalParams.xMax, FractalParams.yMax, FractalParams.WIDTH, FractalParams.HEIGHT);
+            pixelBuffer.put(fractalCpu.pixelBuffer);
         }
 
         pixelBuffer.flip();
@@ -234,14 +241,21 @@ public class FractalMain {
             g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
             g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
-            String modoNombre = (modo == 1) ? "Java CPU" : "C++ SIMD";
+            String modoNombre;
+            if (modo == 1) {
+                modoNombre = "Java CPU";
+            } else if (modo == 2) {
+                modoNombre = "C++ SIMD";
+            } else {
+                modoNombre = "Java Threads (" + Runtime.getRuntime().availableProcessors() + " cores)";
+            }
 
             g.setColor(Color.WHITE);
             g.setFont(new Font("SansSerif", Font.BOLD, 24));
             g.drawString("Julia Set | Iteraciones: " + FractalParams.maxIteraciones + " | FPS: " + fps + " | Modo: " + modoNombre, 10, 28);
 
             g.setFont(new Font("SansSerif", Font.BOLD, 20));
-            g.drawString("Opciones: [Up/Down] Cambiar iteraciones | [1] Java CPU | [2] C++ SIMD | [Esc] Salir", 10, FractalParams.HEIGHT - 20);
+            g.drawString("Opciones: [Up/Down] Cambiar iteraciones | [1] Java CPU | [2] C++ SIMD | [3] Java Threads | [Esc] Salir", 10, FractalParams.HEIGHT - 20);
         } finally {
             g.dispose();
         }

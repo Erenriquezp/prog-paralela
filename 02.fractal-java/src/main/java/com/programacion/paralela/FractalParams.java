@@ -37,4 +37,24 @@ public class FractalParams {
             0xFF110000,
             0xFF080000,  // casi negro
     };
+
+   // Paleta naranja/rojo -> negro (solo modo Java Threads)
+   public static final int colorRampThreads[] = {
+            0xFF00A5FF,
+            0xFF0095F0,
+            0xFF0085E0,
+            0xFF0075D0,
+            0xFF0065C0,
+            0xFF0055B0,
+            0xFF0045A0,
+            0xFF003590,
+            0xFF002980,
+            0xFF001F70,
+            0xFF001560,
+            0xFF000D50,
+            0xFF000840,
+            0xFF000530,
+            0xFF000320,
+            0xFF000210,
+    };
 }
