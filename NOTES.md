@@ -9,6 +9,7 @@ https://github.com/microsoft/vcpkg/releases/tag/2026.03.18
 * **Build System:** CMake + Ninja Multi-Config.
 
 * **Zoom:** 550 558 9245
+* **PATH:** C:\tools\mingw64\bin;C:\tools\prog-paralela\03.fractal-dll\build\Release
 ---
 
 ## 💻 Comandos Esenciales (Consola)
