@@ -21,12 +21,6 @@ cmake_install.cmake
 install_manifest.txt
 Makefile
 
-# --- VS Code ---
-# Ignora la configuración personal de tu editor
-.vscode/*
-!.vscode/extensions.json
-!.vscode/launch.json
-!.vscode/tasks.json
 # Ignora el caché de C++ de VS Code
 .cache/
 .ipch/
