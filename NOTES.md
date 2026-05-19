@@ -67,3 +67,5 @@ Debido a que esta versión es la que instalamos, recuerda estos cambios crítico
 * **VideoMode:** Usa llaves: `sf::VideoMode({ancho, alto})`.
 * **Eventos:** Usa opcionales: `while (const std::optional event = window.pollEvent())`.
 * **Cierre:** Verifica tipo: `if (event->is<sf::Event::Closed>())`.
+
+Para pruebas, examenes y trabajos hacer con openmp - regiones paralelas para distribuir el trabajo manualmente
