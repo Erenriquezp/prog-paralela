@@ -29,8 +29,6 @@ Makefile
 # Archivos temporales de MinGW/GCC
 *.o
 *.a
-*.exe
-*.dll
 *.so
 *.dylib
 *.pdb
