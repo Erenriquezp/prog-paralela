@@ -10,6 +10,7 @@ find_package(SFML COMPONENTS System Graphics Window CONFIG REQUIRED)
 add_executable(FiltroPractice
    main.cpp 
    test.cpp
+   producto.cpp
 )
 
 target_link_libraries(FiltroPractice PRIVATE fmt::fmt 
