@@ -6,11 +6,13 @@
 void simd(const uint8_t* entrada, uint8_t* salida, int w, int h) {
    int total_pixels = w * h;
 
+   int limite_simd = total_pixels - (total_pixels % 8);
+
    __m256 lr = _mm256_set1_ps(0.21f);
    __m256 lg = _mm256_set1_ps(0.72f);
    __m256 lb = _mm256_set1_ps(0.07f);
 
-   for (int i = 0; i < total_pixels; i+=8) {
+   for (int i = 0; i < limite_simd; i+=8) {
       float temp_r[8], temp_g[8], temp_b[8]; 
       for (int p = 0; p < 8; p++) {
          int idx = (p + i) * 4;
@@ -34,6 +36,15 @@ void simd(const uint8_t* entrada, uint8_t* salida, int w, int h) {
       for (int p = 0; p < 8; p++) {
          salida[i + p] = res_final[p];
       }
+   }
+
+   for (int i = limite_simd; i < total_pixels; i++) {
+      int idx = (i * 4);
+      uint8_t r = entrada[idx];
+      uint8_t g = entrada[idx + 1];
+      uint8_t b = entrada[idx + 2];
+
+      salida[i] = r * 0.21f + g * 0.72f + 0.07f * b;
    }
 }
 

@@ -4,40 +4,32 @@
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
 
-// #include "test.h"
-#include "producto.h"
+//#include "test.h"
+//#include "producto.h"
+#include "matriz.h"
+#include "practice.h"
 #include <fmt/core.h>
 #include <chrono>
 
 int main() {
-   
    // int w, h, channels;
-   // uint8_t* rgba_pixels = stbi_load("img.jpg", &w, &h, &channels, STBI_rgb_alpha);
-   // channels = 4;
+   // uint8_t* rgba = stbi_load("img.jpg", &w, &h, &channels, STBI_rgb_alpha);
 
-   // int total_pixeles = w * h;
-   // uint8_t* gray_pixels = new uint8_t[total_pixeles];
+   // int total_bytes = w * h * 4;
+   // uint8_t* negative_pixels = new uint8_t[total_bytes];
 
-   // simd(rgba_pixels, gray_pixels, w, h);
+   // simdP(rgba, negative_pixels, w, h);
+   // stbi_write_png("salida_sepia.png", w, h, STBI_rgb_alpha, negative_pixels, w*4);   
 
-   // stbi_write_png("img-gris.png", w, h, STBI_grey, gray_pixels, w);
+   const int n = 4;
+   float m[n*n] = {
+      1,1,1,1,
+      1,1,1,1,
+      1,1,1,1,
+      1,1,1,1
+   };
 
-   const int N = 16;
-
-   float x[N] = {1,1,1,1, 1,1,1,1, 1,1,1,1, 1,1,1,1};
-   float y[N] = {2,2,2,2, 2,2,2,2, 2,2,2,2, 2,2,2,2};
-
-   auto start = std::chrono::high_resolution_clock::now();
-   float s = simd(x, y, N);
-   auto end = std::chrono::high_resolution_clock::now();
-   std::chrono::duration<double, std::milli> elapsed = end - start;
-   fmt::println("simd: {}, time: {:.4f}", s, (elapsed.count()));
-
-   auto start2 = std::chrono::high_resolution_clock::now();
-   float r = simd(x, y, N);
-   auto end2 = std::chrono::high_resolution_clock::now();
-
-   std::chrono::duration<double, std::milli> elapsed2 = end2 - start2;
-   fmt::println("regiones: {}, time: {:.6f}", r, (elapsed2.count()));
-   return 0;
+   float suma_diagonal = regionsM(m, n);
+   //float suma_diagonal = simdM(m, n);
+   fmt::println("suma= {}", suma_diagonal);
 }

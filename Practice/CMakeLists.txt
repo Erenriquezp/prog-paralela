@@ -11,6 +11,8 @@ add_executable(FiltroPractice
    main.cpp 
    test.cpp
    producto.cpp
+   practice.cpp
+   matriz.cpp
 )
 
 target_link_libraries(FiltroPractice PRIVATE fmt::fmt 
