@@ -9,13 +9,13 @@ set(MPI_ROOT "c:/oneAPI/mpi/latest")
 set(MPI_INCLUDE "${MPI_ROOT}/include")
 set(MPI_LIB "${MPI_ROOT}/lib")
 
-add_executable(ejemplo-mpi 
+add_executable(matrices_mult_padding 
     matrices_mult_padding.cpp 
 )
 
-target_include_directories(ejemplo-mpi PRIVATE ${MPI_INCLUDE})
+target_include_directories(matrices_mult_padding PRIVATE ${MPI_INCLUDE})
 
-target_link_libraries(ejemplo-mpi PRIVATE 
+target_link_libraries(matrices_mult_padding PRIVATE 
     fmt::fmt
     ${MPI_LIB}/impi.lib
 )
