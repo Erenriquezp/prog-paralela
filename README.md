@@ -34,7 +34,13 @@ ninja --version
 .\vcpkg install fmt:x64-mingw-dynamic
 .\vcpkg install sfml:x64-mingw-dynamic
 ```
+### 3. OPEN MPI
 
+```powershell
+cd C:\oneAPI
+C:\oneAPI>setvars
+C:\tools\prog-paralela\05.ejemplo-mpi\build\Debug>mpiexec -n 4 fractal-mpi.exe
+```
 ---
 
 ## 📂 Archivos del Proyecto (Explicación)
