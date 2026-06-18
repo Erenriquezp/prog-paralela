@@ -4,7 +4,6 @@ project(FractalJulia)
 
 find_package(fmt CONFIG REQUIRED)
 find_package(SFML COMPONENTS System Graphics Window CONFIG REQUIRED)
-find_package(Freetype REQUIRED)
 
 #-- config MPI
 set(MPI_ROOT "c:/oneAPI/mpi/latest")
@@ -19,12 +18,10 @@ add_executable(fractal-mpi
     main.cpp
     fractal_mpi.cpp
     palette.cpp
-    draw_text.cpp
 )
 
 target_link_libraries(fractal-mpi PRIVATE 
     fmt::fmt
     SFML::Graphics SFML::Window SFML::System
-    Freetype::Freetype
     ${MPI_LIB}/impi.lib
 )

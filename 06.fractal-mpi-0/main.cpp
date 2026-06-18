@@ -11,17 +11,10 @@
 #include <optional>
 
 #include "fractal_mpi.h"
-#include "draw_text.h"
 
 #ifdef _WIN32
     #include <windows.h>
 #endif
-
-namespace arial_ttf
-{
-    extern size_t data_len;
-    extern unsigned char data[];
-}
 
 // -- parametros Julia
 double x_min = -1.5;
@@ -41,36 +34,12 @@ uint32_t* texture_buffer = nullptr; // solo rank 0
 
 int running = 1;
 
-// Variables Globales (Sin duplicados)
-int nprocs;
-int rank;
-
-int row_start;
-int row_end;
-int delta;
-int padding;
-
-std::string machine_name() {
-    // -- machine name
-    std::string mname = "";
-#ifdef _WIN32
-    char hostname[256];
-    DWORD size = sizeof(hostname);
-    GetComputerNameA(hostname, &size);
-    mname = hostname;
-#endif
-    return mname;
-}
-
-void dibujar_texto(int rank) {
-    auto texto = fmt::format("RANK {}==>{}", rank, machine_name());
-    draw_text_to_texture((unsigned char*)pixel_buffer, WIDTH, delta, texto.c_str(), 10, 25, 20);
-}
-
-void setup_iu() {
+void setup_iu(int nprocs, int delta, int row_start, int row_end) {
+    // El gather junta nprocs franjas de 'delta' filas; reservamos ese tamaño (>= WIDTH*HEIGHT)
     texture_buffer = new uint32_t[WIDTH * delta * nprocs];
-    std::memset(texture_buffer, 0, WIDTH * delta * nprocs * sizeof(uint32_t));
+    std::memset(texture_buffer, 0, WIDTH * delta * nprocs * sizeof(uint32_t)); // inicializamos
 
+    // crear la UI
     sf::RenderWindow window(sf::VideoMode({(unsigned)WIDTH, (unsigned)HEIGHT}), "Fractal MPI");
 
     #ifdef _WIN32
@@ -79,14 +48,11 @@ void setup_iu() {
     #endif
 
     sf::Texture texture;
-    if (!texture.resize({WIDTH, HEIGHT})) {
-        fmt::print(stderr, "Error: no se pudo redimensionar la textura\n");
-        return;
-    }
+    texture.resize({WIDTH, HEIGHT});
     sf::Sprite sprite(texture);
-    
-    const sf::Font font(arial_ttf::data, arial_ttf::data_len);
-    sf::Text text(font, "Fractal", 24);
+    sf::Font font;
+    font.openFromFile("arial.ttf");
+    sf::Text text(font, "Julia Set", 24);
     text.setFillColor(sf::Color::White);
     text.setPosition({10, 10});
     text.setStyle(sf::Text::Bold);
@@ -95,7 +61,7 @@ void setup_iu() {
     sf::Text textOptions(font, options, 20);
     textOptions.setFillColor(sf::Color::White);
     textOptions.setStyle(sf::Text::Bold);
-    textOptions.setPosition({10, window.getView().getSize().y - 40});
+    textOptions.setPosition({10, window.getView().getSize().y -40});
 
     int frames = 0;
     sf::Clock clock;
@@ -109,60 +75,45 @@ void setup_iu() {
                 running = 0;
                 window.close();
             }
+
             else if (event->is<sf::Event::KeyReleased>()) {
                 auto evt = event->getIf<sf::Event::KeyReleased>();
-                switch (evt->scancode) {
+
+                switch (evt -> scancode) {
                     case sf::Keyboard::Scan::Up:
                         max_iteraciones += 10;
                         break;
                     case sf::Keyboard::Scan::Down:
                         max_iteraciones -= 10;
-                        if (max_iteraciones < 10) max_iteraciones = 10;
+                        if (max_iteraciones < 10) {
+                            max_iteraciones = 10;
+                        }
                         break;
                 }
-                std::memset(pixel_buffer, 0, WIDTH * delta * sizeof(uint32_t));
+                // TODO: reactivar al dibujar el fractal. Desborda pixel_buffer (rank 0 lo reserva como WIDTH*delta, no WIDTH*HEIGHT).
+                // std::memset(pixel_buffer, 0, WIDTH * HEIGHT * sizeof(uint32_t));
             }
         }
 
-        // 1) Enviar parámetros de control
+        // si la ventana se cerró, salimos sin lanzar otra ronda colectiva
+        if (!window.isOpen()) break;
+
+        // 1) enviar los parámetros de control a los workers
         std::vector<int> dummy = {max_iteraciones, running};
         MPI_Bcast(dummy.data(), 2, MPI_INT, 0, MPI_COMM_WORLD);
 
-        if (running == 0) {
-            break;
-        }
-        
-        // 2) Master calcula su franja
+        // 2) el master calcula su propia franja
         julia_mpi(x_min, y_min, x_max, y_max, WIDTH, HEIGHT, row_start, row_end, pixel_buffer);
-        dibujar_texto(rank);
 
-        // copiar el pixel_buffer a texture
-        std::memcpy(texture_buffer, pixel_buffer, WIDTH * delta * sizeof(uint32_t));
+        // 3) recolectar las franjas de todos los ranks en texture_buffer
+        MPI_Gather(pixel_buffer, WIDTH * delta, MPI_UINT32_T,
+                   texture_buffer, WIDTH * delta, MPI_UINT32_T,
+                   0, MPI_COMM_WORLD);
 
-        // Recibir franjas de los workers (Empezando en i = 1)
-        for (int i = 1; i < nprocs; i++) {
-            int new_delta = delta;
-            if (i == nprocs - 1) {
-                new_delta = delta - padding;
-            }
+        // 4) volcar el resultado a la textura
+        texture.update((const uint8_t *) texture_buffer);
 
-            MPI_Status status;
-
-            MPI_Recv(
-                pixel_buffer,
-                WIDTH * new_delta,
-                MPI_UNSIGNED,
-                i,
-                0,
-                MPI_COMM_WORLD,
-                &status
-            );
-            std::memcpy(texture_buffer + i * delta * WIDTH, pixel_buffer, WIDTH * new_delta * sizeof(uint32_t));
-        }
-        
-        // 4) Volcar a la textura
-        texture.update((const uint8_t *)texture_buffer);
-
+        // contar FPS
         frames++;
         if (clock.getElapsedTime().asSeconds() >= 1.0f) {
             fps = frames;
@@ -170,49 +121,59 @@ void setup_iu() {
             clock.restart();
         }
 
-        auto msg = fmt::format("Fractal: Iterations: {}, FPS: {}, Mode: MPI", max_iteraciones, fps);
-        text.setString(msg);
-
         window.clear();
-        window.draw(sprite);
-        window.draw(text);
-        window.draw(textOptions);
+        {
+            window.draw(sprite);
+            window.draw(text);
+            window.draw(textOptions);
+        }
         window.display();
     }
 
-    // Apagar workers
+    // avisar a los workers que deben terminar (tras esto no habrá gather)
     running = 0;
     std::vector<int> dummy = {max_iteraciones, running};
     MPI_Bcast(dummy.data(), 2, MPI_INT, 0, MPI_COMM_WORLD);
 }
 
 int main(int argc, char** argv) {
-    init_freetype();    
-
     MPI_Init(&argc, &argv);
+
+    int nprocs;
+    int rank;
     
+    // ranks 
     MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-    // ASIGNACIÓN CORRECTA A LAS VARIABLES GLOBALES (Sin "int" al principio)
-    delta = std::ceil(HEIGHT * 1.0 / nprocs); 
-    row_start = rank * delta;
-    row_end = row_start + delta;
-    padding = delta * nprocs - HEIGHT; 
+    int delta = std::ceil(HEIGHT*1.0 / nprocs); // 1600/4 = 400
+    /**
+     * r0: start = 0*400 = 0, end = 0 +400 = 400
+     * r1: start = 1*400 = 400, end = 400 +400 = 800
+     * r2: start = 2*400 = 800, end = 800 +400 = 1200
+     * r3: start = 3*400 = 1200, end = 1200 +400 = 1600
+     */
+
+    int row_start = rank * delta;
+    int row_end = row_start + delta;
+    int padding = delta * nprocs - HEIGHT; // 400 * 4 - 1600 = 0
 
     if(row_end > HEIGHT) {
         row_end = HEIGHT;
     }
 
     pixel_buffer = new uint32_t[WIDTH * delta];
-    std::memset(pixel_buffer, 0, WIDTH * delta * sizeof(uint32_t));
+    std::memset(pixel_buffer, 0, WIDTH * delta * sizeof(uint32_t)); // inicializamos
 
     fmt::print("RANK: {}, rows: {}, to: {}\n", rank, row_start, row_end);
 
     if (rank == 0) {
-        setup_iu();
+        // master
+        setup_iu(nprocs, delta, row_start, row_end);
     } else {
+        // workers
         while (true) {
+            // recibir los parámetros de control del master
             std::vector<int> dummy(2);
             MPI_Bcast(dummy.data(), 2, MPI_INT, 0, MPI_COMM_WORLD);
             max_iteraciones = dummy[0];
@@ -224,28 +185,20 @@ int main(int argc, char** argv) {
             }
 
             julia_mpi(x_min, y_min, x_max, y_max, WIDTH, HEIGHT, row_start, row_end, pixel_buffer);
-            dibujar_texto(rank);
 
-            // Ajustar tamaño de envío para el último proceso esclavo
-            int my_delta = delta;
-            if (rank == nprocs - 1) {
-                my_delta = delta - padding;
+              if (rank == 1)
+            {
+                fmt::print("rank: {}: done computing rows {} to {}\n", rank, row_start, row_end);
             }
 
-            MPI_Send(
-                pixel_buffer,
-                WIDTH * my_delta,
-                MPI_UNSIGNED,
-                0,
-                0,
-                MPI_COMM_WORLD
-            );
+            MPI_Gather(pixel_buffer, WIDTH * delta, MPI_UINT32_T,
+                       nullptr, WIDTH * delta, MPI_UINT32_T,
+                       0, MPI_COMM_WORLD);
         }
     }
 
-    delete[] pixel_buffer;
-    if (rank == 0) delete[] texture_buffer;
-
     MPI_Finalize();
+    // C:\oneAPI>setvars
+    //C:\tools\prog-paralela\05.ejemplo-mpi\build\Debug>mpiexec -n 4 fractal-mpi.exe
     return 0;
 }
