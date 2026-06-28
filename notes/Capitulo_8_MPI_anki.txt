@@ -1,0 +1,103 @@
+#separator:tab
+#html:false
+#tags column:3
+¿Qué es MPI?	Estándar basado en bibliotecas para paso de mensajes entre procesos en cómputo de alto rendimiento (memoria distribuida).	Cap8::Fundamentos
+¿MPI requiere compilador o SO especial?	No; es solo una biblioteca (se incluye mpi.h y se enlaza).	Cap8::Fundamentos
+¿Con qué llamada empieza y termina todo programa MPI?	Empieza con MPI_Init y termina con MPI_Finalize.	Cap8::Fundamentos
+¿Qué hace MPI_Init?	Inicializa MPI justo al inicio del programa, pasando &argc y &argv.	Cap8::Fundamentos
+¿Qué es un proceso en MPI?	Unidad de cómputo independiente con su propia memoria y recursos.	Cap8::Fundamentos
+¿Qué es el rank?	Identificador único entero de un proceso dentro del comunicador (0 a nprocs-1).	Cap8::Fundamentos
+¿Qué es un comunicador?	Grupo de procesos que pueden comunicarse entre sí.	Cap8::Fundamentos
+¿Cuál es el comunicador por defecto?	MPI_COMM_WORLD (todos los procesos).	Cap8::Fundamentos
+¿Cómo se obtiene el rank?	MPI_Comm_rank(MPI_COMM_WORLD, &rank);	Cap8::Fundamentos
+¿Cómo se obtiene el número total de procesos?	MPI_Comm_size(MPI_COMM_WORLD, &nprocs);	Cap8::Fundamentos
+¿En qué orden aparece la salida (printf) de distintos ranks?	En orden arbitrario/aleatorio (lo decide el SO).	Cap8::Fundamentos
+Wrappers de compilación de MPI	mpicc (C), mpicxx/mpic++ (C++), mpifort (Fortran).	Cap8::Fundamentos
+¿Cómo se lanza un programa MPI con N procesos?	mpirun -n N ./programa (también mpiexec, aprun, srun).	Cap8::Fundamentos
+Componentes de un mensaje MPI	Datos (puntero, count, datatype) + sobre (rank, tag, comunicador).	Cap8::PuntoAPunto
+¿Qué define el sobre (envelope) de un mensaje?	Origen/destino e identificación: rank, tag y comunicador.	Cap8::PuntoAPunto
+¿Qué deben coincidir para que un mensaje se complete?	El comunicador y el tag.	Cap8::PuntoAPunto
+¿Para qué sirve el tag?	Distinguir mensajes entre sí; puede ser MPI_ANY_TAG.	Cap8::PuntoAPunto
+¿El buffer de recepción puede ser distinto al de envío?	Puede ser mayor (nunca menor) y de distinto tipo/count (permite conversión).	Cap8::PuntoAPunto
+Buena práctica de orden send/receive	Publicar el receive antes que el send para que exista el buffer destino.	Cap8::PuntoAPunto
+¿Qué significa una llamada blocking?	No retorna hasta que el buffer es seguro de reusar (send: leído; recv: lleno).	Cap8::PuntoAPunto
+Prototipo de MPI_Send	MPI_Send(data, count, datatype, dest, tag, comm).	Cap8::PuntoAPunto
+Prototipo de MPI_Recv	MPI_Recv(data, count, datatype, source, tag, comm, status).	Cap8::PuntoAPunto
+¿Por qué se cuelga Recv-antes-de-Send en ambos procesos?	Ambos bloquean esperando datos que nunca se envían (deadlock).	Cap8::PuntoAPunto
+¿Por qué Send-antes-de-Recv falla con mensajes grandes?	El send espera el buffer del recv que nunca se publica; con mensajes pequeños MPI los bufferiza y funciona por suerte.	Cap8::PuntoAPunto
+¿Qué hace MPI_Sendrecv?	Combina send y receive en una llamada; MPI evita el deadlock.	Cap8::PuntoAPunto
+¿Qué son las llamadas inmediatas (I)?	No bloqueantes: MPI_Isend/MPI_Irecv retornan de inmediato; luego se espera con Wait.	Cap8::PuntoAPunto
+¿Cómo se espera la finalización de varias operaciones inmediatas?	MPI_Waitall(count, requests, statuses).	Cap8::PuntoAPunto
+Regla al usar Isend/Irecv	No modificar el buffer de envío ni leer el de recepción hasta que complete.	Cap8::PuntoAPunto
+¿Qué hay que hacer con un MPI_Request de un Isend mixto?	Liberarlo con MPI_Request_free (o vía Wait/Test) para evitar fuga.	Cap8::PuntoAPunto
+Tipos de datos comunes en C	MPI_CHAR(1B), MPI_INT(4B), MPI_FLOAT(4B), MPI_DOUBLE(8B), MPI_BYTE, MPI_PACKED.	Cap8::PuntoAPunto
+¿Qué tienen de especial MPI_BYTE y MPI_PACKED?	Coinciden con cualquier tipo; MPI_PACKED se usa con MPI_Pack.	Cap8::PuntoAPunto
+Rutinas de comprobación de finalización	MPI_Test(any/all/some) y MPI_Wait(any/all/some), MPI_Probe.	Cap8::PuntoAPunto
+¿Sobre qué operan las colectivas?	Sobre todos los procesos de un comunicador.	Cap8::Colectivas
+¿Qué pasa si no todos los procesos llaman a una colectiva?	El programa se cuelga.	Cap8::Colectivas
+¿Qué hace MPI_Barrier?	Sincroniza todos los procesos; única colectiva que no mueve datos.	Cap8::Colectivas
+¿Qué hace MPI_Bcast?	Un proceso envía un mismo dato a todos.	Cap8::Colectivas
+¿Qué hace MPI_Reduce?	Combina valores de todos (suma, max…) dejando el resultado en un root.	Cap8::Colectivas
+¿Diferencia entre MPI_Reduce y MPI_Allreduce?	Allreduce deja el resultado en todos los procesos, no solo en el root.	Cap8::Colectivas
+¿Qué hace MPI_Scatter?	Reparte trozos de un arreglo del root a cada proceso.	Cap8::Colectivas
+¿Qué hace MPI_Gather?	Reúne un valor de cada proceso apilándolos en el root.	Cap8::Colectivas
+¿Qué hace MPI_Allgather?	Como Gather pero el arreglo completo queda en todos los procesos.	Cap8::Colectivas
+¿Para qué sirven las variantes Scatterv/Gatherv/Allgatherv?	Enviar/recibir cantidades variables por proceso (con counts y offsets).	Cap8::Colectivas
+¿Cómo se mide tiempo en MPI?	Con MPI_Wtime() (diferencia entre dos llamadas).	Cap8::Colectivas
+¿Cómo se sincronizan temporizadores?	Con MPI_Barrier antes de iniciar y antes de detener (da el tiempo máximo).	Cap8::Colectivas
+¿Deben usarse barreras/temporizadores sincronizados en producción?	No; causan ralentizaciones graves.	Cap8::Colectivas
+¿Por qué leer archivos pequeños en un solo proceso?	El sistema de archivos es serial y lento; se lee en rank 0 y se difunde con Bcast.	Cap8::Colectivas
+Orden para difundir un archivo con Bcast	Primero difundir el tamaño, los demás reservan memoria, luego difundir los datos.	Cap8::Colectivas
+Operaciones de reducción comunes	MPI_MAX, MPI_MIN, MPI_SUM, MPI_MINLOC, MPI_MAXLOC.	Cap8::Colectivas
+¿Cómo se calcula un promedio con reducción?	Con MPI_SUM y luego dividir entre nprocs en el root.	Cap8::Colectivas
+¿Cómo se crea un operador de reducción personalizado?	Con MPI_Op_create(funcion, commutative, &op) y se libera con MPI_Op_free.	Cap8::Colectivas
+¿Cómo se crea un tipo personalizado de dos doubles?	MPI_Type_contiguous(2, MPI_DOUBLE, &tipo) + MPI_Type_commit.	Cap8::Colectivas
+¿Cómo ordenar impresiones de depuración?	Con MPI_Gather hacia rank 0 e imprimir solo desde rank 0.	Cap8::Colectivas
+¿Qué calcular antes de Scatterv/Gatherv?	Los arreglos nsizes[] y offsets[] (típicamente con MPI_Allgather).	Cap8::Colectivas
+Limitación de tamaño en Scatterv/Gatherv	counts y offsets son int → limitan el tamaño de datos (no hay versión long).	Cap8::Colectivas
+¿Cuándo no se necesita comunicación en paralelismo de datos?	En casos como el stream triad (cada proceso opera su trozo independiente).	Cap8::ParalelismoDatos
+¿Qué son las halo cells?	Celdas que rodean la malla (para condiciones de frontera o caché de vecinos).	Cap8::ParalelismoDatos
+¿Qué son las ghost cells?	Copias locales de datos reales que residen en el proceso vecino.	Cap8::ParalelismoDatos
+¿Por qué existen las ghost cells?	Para reducir comunicaciones agrupándolas; solo se necesitan en paralelo.	Cap8::ParalelismoDatos
+¿Cuál es la técnica más importante del paralelismo de memoria distribuida?	El intercambio (update) de ghost cells.	Cap8::ParalelismoDatos
+¿Qué es un ghost cell exchange?	Refrescar las ghost cells con los valores reales de los procesos vecinos.	Cap8::ParalelismoDatos
+En C, ¿filas o columnas son contiguas?	Las filas son contiguas; las columnas tienen stride (= tamaño de fila).	Cap8::ParalelismoDatos
+¿Por qué agrupar columnas antes de enviarlas?	Enviar valores de columna individuales es costoso por el stride.	Cap8::ParalelismoDatos
+¿Qué indica MPI_PROC_NULL?	Que no hay vecino en esa dirección (la comunicación se ignora).	Cap8::ParalelismoDatos
+Dos formas de cargar buffers de ghost cells	Con MPI_Pack/MPI_Unpack o con asignación de arreglo (bucles).	Cap8::ParalelismoDatos
+¿Cuándo conviene MPI_Pack?	Cuando hay múltiples tipos de datos a comunicar (buffer agnóstico al tipo).	Cap8::ParalelismoDatos
+¿Cuándo conviene asignación de arreglo?	Cuando hay un único tipo de datos simple.	Cap8::ParalelismoDatos
+Vecinos extra en 3D respecto a 2D	nfrnt (rank - nprocx*nprocy) y nback (rank + nprocx*nprocy).	Cap8::ParalelismoDatos
+¿Para qué sirven los tipos de datos personalizados de MPI?	Encapsular datos complejos para enviar muchos fragmentos en una sola llamada.	Cap8::Avanzado
+Beneficio principal de los tipos de datos personalizados	Código más limpio y seguro (y posible mejora de rendimiento por evitar copias).	Cap8::Avanzado
+¿Qué crea MPI_Type_contiguous?	Un tipo a partir de un bloque de datos contiguos.	Cap8::Avanzado
+¿Qué crea MPI_Type_vector?	Un tipo de bloques con stride (count, blocklength, stride).	Cap8::Avanzado
+¿Qué crea MPI_Type_create_subarray?	Un subconjunto rectangular dentro de un arreglo mayor.	Cap8::Avanzado
+¿Qué crea MPI_Type_create_struct?	Un tipo desde una estructura, respetando el padding del compilador.	Cap8::Avanzado
+Ciclo de vida de un tipo personalizado	Commit con MPI_Type_commit antes de usar; liberar con MPI_Type_free al final.	Cap8::Avanzado
+¿Para qué sirve la topología cartesiana de MPI?	Simplificar el cálculo de coordenadas y vecinos en una malla regular.	Cap8::Avanzado
+¿Qué hace MPI_Dims_create?	Rellena las dimensiones en 0 con valores válidos de reparto de procesos.	Cap8::Avanzado
+¿Qué hace MPI_Cart_create?	Crea un comunicador con información de topología (dims, periodic, reorder).	Cap8::Avanzado
+¿Qué hace MPI_Cart_coords?	Obtiene las coordenadas cartesianas de un rank.	Cap8::Avanzado
+¿Qué hace MPI_Cart_shift?	Obtiene los ranks vecinos en una dirección y desplazamiento dados.	Cap8::Avanzado
+¿Qué indica el argumento periodic en Cart_create?	Si las fronteras se envuelven hacia el lado opuesto.	Cap8::Avanzado
+¿Qué hace MPI_Neighbor_alltoallw?	Realiza toda la comunicación con vecinos cartesianos en una sola llamada.	Cap8::Avanzado
+¿En qué unidad van sdispls/rdispls en Neighbor_alltoallw?	En bytes (offsets × tamaño del tipo, p.ej. ×8 para double).	Cap8::Avanzado
+Orden de lados en comunicación con vecinos 2D	Inferior, superior, izquierda, derecha.	Cap8::Avanzado
+Orden de lados en comunicación con vecinos 3D	Frente, atrás, inferior, superior, izquierda, derecha.	Cap8::Avanzado
+¿Qué requieren las esquinas en el ghost exchange?	Sincronización entre los intercambios horizontal y vertical.	Cap8::Avanzado
+Ventaja de tipos de datos y topología en rendimiento	Ligeramente más rápidos (evitan una copia) y simplifican mucho el código.	Cap8::Avanzado
+¿Qué es el paralelismo híbrido?	Combinar dos o más técnicas, p.ej. MPI + OpenMP (vs MPI puro / MPI-everywhere).	Cap8::Hibrido
+¿Cuándo conviene MPI híbrido + OpenMP?	En escala extrema, cuando el rendimiento justifica la complejidad añadida.	Cap8::Hibrido
+Ventajas del MPI + OpenMP	Menos ghost cells entre nodos, menos memoria/buffers, menos contención de NIC, árboles más cortos, mejor balanceo.	Cap8::Hibrido
+¿Qué reemplaza a MPI_Init en híbrido?	MPI_Init_thread(&argc, &argv, requerido, &provided).	Cap8::Hibrido
+Modelos de hilos de MPI (de menor a mayor seguridad)	SINGLE, FUNNELED, SERIALIZED, MULTIPLE.	Cap8::Hibrido
+¿Qué es MPI_THREAD_FUNNELED?	Multihilo pero solo el hilo principal hace llamadas a MPI (el patrón típico).	Cap8::Hibrido
+¿Qué es MPI_THREAD_MULTIPLE?	Varios hilos pueden hacer llamadas a MPI simultáneamente.	Cap8::Hibrido
+¿Qué nivel de seguridad de hilos elegir?	El más bajo que se necesite; cada nivel superior penaliza el rendimiento.	Cap8::Hibrido
+¿Cómo se añade OpenMP a un bucle de cómputo?	Con #pragma omp parallel for (y #pragma omp simd para vectorizar el interno).	Cap8::Hibrido
+¿Qué es la afinidad (affinity)?	Preferencia de planificación de un proceso/hilo a un hardware concreto (pinning/binding).	Cap8::Hibrido
+¿Cómo se fija la ubicación de hilos en OpenMP?	Con variables como OMP_NUM_THREADS, OMP_PLACES y OMP_CPU_BIND.	Cap8::Hibrido
+¿Qué hace --bind-to socket en mpirun?	Vincula los procesos al socket donde están ubicados.	Cap8::Hibrido
+¿Qué son los grupos de comunicadores?	Subdivisiones de MPI_COMM_WORLD en nuevas agrupaciones (filas, columnas, tareas).	Cap8::Extra
+¿Qué es la comunicación unilateral en MPI?	MPI_Put/MPI_Get, donde solo un lado participa activamente.	Cap8::Extra
