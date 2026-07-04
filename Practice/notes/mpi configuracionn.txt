@@ -1,0 +1,27 @@
+verificar la configuracion de powershell como administrador: New-PSSession
+
+verificar si se tiene acceso a todas las maquinas
+Get-Item WSMan:\localhost\Client\TrustedHosts : debe salir un *
+
+Set-Item WSMan:\localhost\Client\TrustedHosts -Value "*"
+Restart-Service winrm
+
+Enter-PSSession servidor1
+Enter-PSSession ip
+Exit-PSSession
+
+Ejecutar programa:
+Invoke-Command -ComputerName servidor1 -ScriptBlock {hostname}
+
+Clonar completo
+
+oneApi/setvars
+mpiexec -n 2 -hosts servidor1,servidor2 hostname
+mpiexec -n 2 -hosts servidor1,servidor2 ipconfig
+
+mpiexec -n 4 -hosts servidor1,servidor2 fractal-mpi
+
+crear un archivo de texto con los nombres de los host:
+mpiexec -n 4 -f -hosts.txt fractal-mpi.exe
+
+copiar de ming64/bin: libgcc_s_seh-1.dll, libstdc++-6.dll, libwinpthread-1.dll

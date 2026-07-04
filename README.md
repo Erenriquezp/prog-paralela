@@ -10,6 +10,7 @@ https://github.com/microsoft/vcpkg/releases/tag/2026.03.18
 
 * **Zoom:** 550 558 9245
 * **PATH IntelliJ:** C:\tools\mingw64\bin;C:\tools\prog-paralela\03.fractal-dll\build\Release
+- **MPI:** https://www.intel.com/content/www/us/en/developer/tools/oneapi/mpi-library-download.html
 ---
 
 ## 💻 Comandos Esenciales (Consola)
@@ -73,3 +74,5 @@ Debido a que esta versión es la que instalamos, recuerda estos cambios crítico
 * **VideoMode:** Usa llaves: `sf::VideoMode({ancho, alto})`.
 * **Eventos:** Usa opcionales: `while (const std::optional event = window.pollEvent())`.
 * **Cierre:** Verifica tipo: `if (event->is<sf::Event::Closed>())`.
+
+Para pruebas, examenes y trabajos hacer con openmp - regiones paralelas para distribuir el trabajo manualmente
