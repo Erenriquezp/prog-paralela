@@ -1,0 +1,150 @@
+#separator:tab
+#html:false
+#tags column:3
+# ============================================================
+# Tarjetas Anki: CODIGO, FORMULAS Y ESTRUCTURA de los ejemplos MPI
+# Fuentes: 02_punto_a_punto.cpp, 03_colectivas.cpp,
+#          04_producto_exterior.cpp, 04_bcast_archivo.cpp,
+#          05_reduce_min_max_avg.cpp
+# Importar en Anki: Archivo > Importar (tipo Basico, campos Front/Back)
+# ============================================================
+# --- ESQUELETO BASE ---
+Escribe el esqueleto mínimo de todo programa MPI del curso (includes, init, identificación, finalize).	"#include <fmt/core.h>
+#include <mpi.h>
+#include <vector>
+#include <cmath>
+
+int main(int argc, char** argv) {
+   MPI_Init(&argc, &argv);
+
+   int nprocs, rank;
+   MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
+   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+   // ... trabajo ...
+
+   MPI_Finalize();
+   return 0;
+}"	Codigo::Esqueleto
+¿Con qué dos llamadas se identifica el proceso y el grupo, y en qué variables se guardan?	MPI_Comm_size(MPI_COMM_WORLD, &nprocs); → total de procesos. MPI_Comm_rank(MPI_COMM_WORLD, &rank); → id propio (0..nprocs-1). Ambas reciben la variable por dirección (&).	Codigo::Esqueleto
+¿Qué headers usan todos los ejemplos MPI del curso y para qué?	<fmt/core.h> (impresión con fmt::print/println), <mpi.h> (MPI), <vector> (buffers) y <cmath> (std::ceil para el bloque).	Codigo::Esqueleto
+¿Cómo se ejecuta un ejemplo MPI con 4 procesos en este entorno (Windows + oneAPI)?	Primero cargar el entorno: cd C:\oneAPI && setvars. Luego: mpiexec -n 4 build\Debug\programa.exe	Codigo::Esqueleto
+# --- FORMULAS DE REPARTO ---
+Fórmula del tamaño de bloque para repartir N elementos entre nprocs (reparto con padding)	int bloque = std::ceil(N * 1.0 / nprocs);	Codigo::Formulas
+¿Por qué se escribe N * 1.0 en la fórmula del bloque?	Para forzar división en double: si la división fuera entera se truncaría ANTES de aplicar ceil y el redondeo hacia arriba no tendría efecto.	Codigo::Formulas
+Fórmula del padding (elementos ficticios que sobran) usada en 02_punto_a_punto	int padding = bloque * nprocs - N;	Codigo::Formulas
+Fórmula del tamaño total con padding usada en 03_colectivas y 04_producto_exterior	int n_pad = bloque * nprocs; (o total_pad; es N redondeado hacia arriba al múltiplo de nprocs)	Codigo::Formulas
+Cuando hay padding, ¿cuántos elementos reales procesa el último rank y cuántos los demás?	El último (rank == nprocs - 1) procesa bloque - padding; todos los demás procesan bloque completo.	Codigo::Formulas
+¿En qué índice del arreglo global empieza el bloque del rank i?	En i * bloque; por eso los envíos usan el puntero &datos[i * bloque].	Codigo::Formulas
+Fórmula de indexación de una matriz aplanada (row-major) en un vector	M[i * n + j] → fila i, columna j. Las filas son contiguas en memoria.	Codigo::Formulas
+Código que ajusta cuántos elementos le tocan a cada proceso cuando N no es divisible	"int mis_elementos = bloque;
+if (rank == nprocs - 1) {
+   mis_elementos = bloque - padding;
+}"	Codigo::Formulas
+# --- 02 PUNTO A PUNTO ---
+Estructura de fases de 02_punto_a_punto (duplicar un vector con Send/Recv)	"1. DISTRIBUCIÓN: rank 0 hace MPI_Send de cada bloque a los ranks 1..nprocs-1 (tag 0); los demás hacen MPI_Recv.
+2. Rank 0 copia su propio bloque a mano (local[i] = datos[i]).
+3. CÁLCULO local: cada rank multiplica su bloque por 2.0.
+4. RECOLECCIÓN: los workers hacen MPI_Send (tag 1); rank 0 hace MPI_Recv en resultado.
+5. Rank 0 imprime los N valores."	Codigo::PuntoAPunto
+Escribe la llamada MPI_Send que distribuye el bloque del rank i (02_punto_a_punto)	MPI_Send(&datos[i * bloque], cuantos, MPI_DOUBLE, i, 0, MPI_COMM_WORLD); — orden: buffer, count, datatype, dest, tag, comm.	Codigo::PuntoAPunto
+Escribe la llamada MPI_Recv con la que un worker recibe su bloque (02_punto_a_punto)	MPI_Recv(local.data(), mis_elementos, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE); — orden: buffer, count, datatype, source, tag, comm, status.	Codigo::PuntoAPunto
+¿En qué se diferencian los parámetros de MPI_Recv respecto a MPI_Send?	Recv usa source en vez de dest y añade un último parámetro MPI_Status* (aquí MPI_STATUS_IGNORE). El resto es idéntico.	Codigo::PuntoAPunto
+¿Qué es MPI_STATUS_IGNORE y cuándo se usa?	Constante que se pasa como status en MPI_Recv cuando no interesa inspeccionar el sobre del mensaje (source/tag/error reales).	Codigo::PuntoAPunto
+Escribe el bucle completo de distribución en rank 0 (02_punto_a_punto)	"for (int i = 1; i < nprocs; i++) {
+   int cuantos = bloque;
+   if (i == nprocs - 1) {
+      cuantos = bloque - padding;
+   }
+   MPI_Send(&datos[i * bloque], cuantos, MPI_DOUBLE, i, 0, MPI_COMM_WORLD);
+}"	Codigo::PuntoAPunto
+¿Cómo obtiene rank 0 su propio bloque en 02_punto_a_punto?	No se envía un mensaje a sí mismo: copia con un bucle for (int i = 0; i < bloque; i++) local[i] = datos[i];	Codigo::PuntoAPunto
+¿Por qué la distribución usa tag 0 y la recolección tag 1 en 02_punto_a_punto?	Para distinguir los dos flujos de mensajes: mismo par de procesos pero direcciones/momentos distintos; el tag evita confundir un envío de ida con uno de vuelta.	Codigo::PuntoAPunto
+Escribe la llamada con la que rank 0 recolecta el bloque procesado del rank i (02_punto_a_punto)	MPI_Recv(&resultado[i * bloque], cuantos, MPI_DOUBLE, i, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE); — recibe directamente en la posición final del arreglo global.	Codigo::PuntoAPunto
+En 02_punto_a_punto, ¿por qué el bucle de cómputo va hasta mis_elementos y no hasta bloque?	Porque el último rank tiene elementos ficticios (padding) al final de su buffer; solo debe transformar los bloque - padding reales.	Codigo::PuntoAPunto
+# --- 03 COLECTIVAS ---
+Pipeline completo de 03_colectivas (escalar un vector y sumar con colectivas)	"1. rank 0 llena datos (tamaño n_pad, relleno 0.0) y fija factor = 2.
+2. MPI_Bcast(&factor, ...) → todos conocen el factor.
+3. MPI_Scatter(datos → local) → cada rank recibe su bloque.
+4. Cálculo local: local[i] *= factor y acumula suma_local.
+5. MPI_Gather(local → resultado) → rank 0 reúne el vector.
+6. MPI_Reduce(suma_local → suma_total, MPI_SUM) → total en rank 0.
+7. rank 0 imprime resultado[0..N) y la suma."	Codigo::Colectivas
+Escribe la llamada MPI_Bcast que difunde el factor (03_colectivas)	MPI_Bcast(&factor, 1, MPI_INT, 0, MPI_COMM_WORLD); — orden: buffer, count, datatype, root, comm.	Codigo::Colectivas
+¿MPI_Bcast se escribe distinto en el root que en los demás procesos?	No: TODOS ejecutan exactamente la misma línea. El argumento root (aquí 0) decide quién envía; en los demás el buffer se llena al retornar.	Codigo::Colectivas
+Escribe la llamada MPI_Scatter completa de 03_colectivas	"MPI_Scatter(datos.data(), bloque, MPI_DOUBLE,
+            local.data(), bloque, MPI_DOUBLE,
+            0, MPI_COMM_WORLD);"	Codigo::Colectivas
+Orden de los 8 parámetros de MPI_Scatter (y qué significa el count)	sendbuf, sendcount, sendtype, recvbuf, recvcount, recvtype, root, comm. El count es la cantidad POR PROCESO (bloque), no el total.	Codigo::Colectivas
+En 03_colectivas los ranks != 0 pasan datos.data() con el vector vacío a Scatter. ¿Por qué no falla?	El sendbuf de Scatter solo se lee en el root; en el resto de procesos ese argumento se ignora.	Codigo::Colectivas
+¿Por qué rank 0 redimensiona datos y resultado a n_pad rellenando con 0.0 (03_colectivas)?	MPI_Scatter/Gather exigen bloques del MISMO tamaño en todos los procesos; el padding con ceros completa el último bloque cuando N no es divisible entre nprocs.	Codigo::Colectivas
+Escribe la llamada MPI_Gather completa de 03_colectivas	"MPI_Gather(local.data(), bloque, MPI_DOUBLE,
+           resultado.data(), bloque, MPI_DOUBLE,
+           0, MPI_COMM_WORLD);"	Codigo::Colectivas
+¿Qué relación hay entre los argumentos de MPI_Scatter y MPI_Gather?	Son espejo: mismo orden (sendbuf, sendcount, sendtype, recvbuf, recvcount, recvtype, root, comm), pero en Scatter el buffer grande es el send (root reparte) y en Gather el buffer grande es el recv (root reúne).	Codigo::Colectivas
+Escribe la llamada MPI_Reduce que suma los parciales (03_colectivas)	MPI_Reduce(&suma_local, &suma_total, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD); — orden: sendbuf, recvbuf, count, datatype, op, root, comm.	Codigo::Colectivas
+¿Por qué el padding con ceros no altera la suma_total en 03_colectivas?	Los elementos de relleno valen 0.0 y 0.0 * factor = 0.0, así que aportan cero a la reducción; además al imprimir solo se recorren los primeros N.	Codigo::Colectivas
+¿Qué colectiva reemplaza a cada patrón manual de 02_punto_a_punto?	El bucle de MPI_Send de rank 0 ≈ MPI_Scatter; el bucle de MPI_Recv de recolección ≈ MPI_Gather; la suma de parciales que haría rank 0 ≈ MPI_Reduce.	Codigo::Colectivas
+Regla mental de flujo de datos: Bcast / Scatter / Gather / Reduce	Bcast: root → todos, el MISMO dato. Scatter: root → todos, TROZOS distintos. Gather: todos → root, se apilan. Reduce: todos → root, COMBINADOS en un valor (SUM, MAX...).	Codigo::Colectivas
+# --- 04 PRODUCTO EXTERIOR ---
+¿Qué calcula 04_producto_exterior y con qué fórmula?	El producto exterior M = U·Vᵀ de dos vectores de tamaño N: una matriz NxN donde M[i][j] = U[i] * V[j].	Codigo::ProductoExterior
+Estrategia de distribución del producto exterior en MPI	V se envía COMPLETO a todos (cada fila lo necesita entero); U se reparte por bloques de filas con padding. Cada rank calcula un sub-bloque de bloque × N elementos.	Codigo::ProductoExterior
+Convención de tags en 04_producto_exterior	tag 0 = vector V completo; tag 1 = bloque de U; tag 2 = bloque de la matriz resultado.	Codigo::ProductoExterior
+Escribe los dos MPI_Send de la fase de distribución del producto exterior	"for (int i = 1; i < nprocs; i++) {
+   MPI_Send(V.data(), N, MPI_DOUBLE, i, 0, MPI_COMM_WORLD);           // Tag 0: V completo
+   MPI_Send(&U[i * bloque], bloque, MPI_DOUBLE, i, 1, MPI_COMM_WORLD); // Tag 1: bloque de U
+}"	Codigo::ProductoExterior
+Escribe el doble bucle de cálculo del producto exterior	"for (int i = 0; i < bloque; i++) {
+   for (int j = 0; j < N; j++) {
+      local_res[i * N + j] = local_U[i] * V[j];
+   }
+}"	Codigo::ProductoExterior
+¿Qué tamaño tiene local_res en el producto exterior y por qué?	bloque * N: cada rank produce bloque filas completas de N columnas, aplanadas en un vector.	Codigo::ProductoExterior
+¿En qué posición recibe rank 0 el bloque de resultado del rank i (producto exterior)?	En &global_res[i * bloque * N]: cada rank aporta bloque filas de N elementos, así que su offset es i * bloque * N.	Codigo::ProductoExterior
+Escribe la llamada de recolección del resultado en el producto exterior	MPI_Recv(&global_res[i * bloque * N], bloque * N, MPI_DOUBLE, i, 2, MPI_COMM_WORLD, MPI_STATUS_IGNORE);	Codigo::ProductoExterior
+Escribe la función imprimir_matriz usada en el producto exterior	"void imprimir_matriz(const std::vector<double>& M, int n) {
+    for (int i = 0; i < n; i++) {
+        for (int j = 0; j < n; j++) {
+            fmt::print(""{:6.1f} "", M[i * n + j]);
+        }
+        fmt::print(""\n"");
+    }
+}"	Codigo::ProductoExterior
+global_res mide total_pad * N pero se imprime con n = N. ¿Por qué?	Las filas extra provienen del padding de U (valen basura/cero y no pertenecen al problema); se recortan al imprimir solo la submatriz NxN real.	Codigo::ProductoExterior
+# --- 04 BCAST ARCHIVO ---
+Patrón de DOS pasos para difundir un archivo con MPI_Bcast (Listado 8.10)	"1. Solo rank 0 lee el archivo y calcula tam = contenido.size().
+2. MPI_Bcast(&tam, 1, MPI_INT, 0, MPI_COMM_WORLD);  → todos conocen el tamaño.
+3. contenido.resize(tam);  → todos reservan memoria.
+4. MPI_Bcast(contenido.data(), tam, MPI_CHAR, 0, MPI_COMM_WORLD);  → todos reciben el texto."	Codigo::BcastArchivo
+¿Por qué solo el rank 0 lee el archivo antes de difundirlo?	El sistema de archivos es serial y lento: N procesos leyendo a la vez lo saturan. Es más barato leer una vez y difundir por la red con Bcast.	Codigo::BcastArchivo
+¿Por qué hay que difundir PRIMERO el tamaño y DESPUÉS el contenido?	Porque los receptores necesitan saber cuánta memoria reservar (resize) antes de que llegue el segundo Bcast; sin buffer del tamaño correcto la recepción fallaría.	Codigo::BcastArchivo
+Escribe el código con el que rank 0 lee el archivo completo (04_bcast_archivo)	"if (rank == 0) {
+    std::ifstream archivo(""entrada.txt"");
+    std::string linea;
+    while (std::getline(archivo, linea)) {
+        contenido = contenido + linea + ""\n"";
+    }
+    tam = contenido.size();
+}"	Codigo::BcastArchivo
+Escribe el Bcast del contenido del archivo y su tipo MPI	MPI_Bcast(contenido.data(), tam, MPI_CHAR, 0, MPI_COMM_WORLD); — texto = tam elementos MPI_CHAR desde el .data() del std::string.	Codigo::BcastArchivo
+¿Qué línea ejecutan TODOS los procesos entre los dos Bcast del archivo, y por qué no daña al rank 0?	contenido.resize(tam); — en los workers reserva el buffer; en rank 0 es inofensivo porque el string ya tiene exactamente ese tamaño.	Codigo::BcastArchivo
+# --- 05 REDUCE MIN MAX AVG ---
+Escribe el patrón completo para medir tiempo en MPI (Listado 8.11)	"MPI_Barrier(MPI_COMM_WORLD);            // todos arrancan a la vez
+double start_time = MPI_Wtime();
+
+// ... trabajo ...
+
+double main_time = MPI_Wtime() - start_time;"	Codigo::ReduceTiempos
+¿Por qué se pone MPI_Barrier antes de empezar a medir el tiempo?	Sincroniza el arranque: todos empiezan a contar a la vez, así la medición refleja el tiempo real del proceso más lento y los tiempos son comparables.	Codigo::ReduceTiempos
+Escribe las TRES llamadas MPI_Reduce de min, max y promedio (05_reduce)	"MPI_Reduce(&main_time, &max_time, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+MPI_Reduce(&main_time, &min_time, 1, MPI_DOUBLE, MPI_MIN, 0, MPI_COMM_WORLD);
+MPI_Reduce(&main_time, &avg_time, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);"	Codigo::ReduceTiempos
+¿Cómo se obtiene el PROMEDIO de tiempos si MPI no tiene MPI_AVG?	Se reduce con MPI_SUM y en el rank 0 se divide: avg_time / nprocs (justo al imprimir).	Codigo::ReduceTiempos
+Escribe la espera activa que simula trabajo distinto por rank (05_reduce)	"double t_fin = MPI_Wtime() + 0.1 * (rank + 1);   // 0.1 s por rank
+while (MPI_Wtime() < t_fin) { }"	Codigo::ReduceTiempos
+¿Qué devuelve MPI_Wtime() y cómo se usa?	Un double con segundos desde un instante arbitrario; solo tiene sentido por DIFERENCIA entre dos llamadas (fin - inicio).	Codigo::ReduceTiempos
+Tras los tres MPI_Reduce, ¿qué procesos tienen min/max/avg válidos y qué cambiaría con Allreduce?	Solo el root (rank 0) tiene los valores; en los demás las variables quedan sin definir. Con MPI_Allreduce el resultado quedaría en TODOS y la llamada no lleva argumento root.	Codigo::ReduceTiempos
+# --- COMPARACION Y CRITERIO ---
+¿Cuándo conviene punto a punto (Send/Recv) y cuándo colectivas, según estos ejemplos?	Colectivas cuando todos siguen el mismo patrón regular (más simple, menos errores, optimizadas): 03, bcast_archivo, reduce. Punto a punto cuando cada proceso recibe cantidades distintas o se necesita control fino de tags/orden: 02 y 04 (bloque - padding solo en el último rank).	Codigo::Criterio
+¿Qué problema del reparto manual (02/04) resuelve el padding con ceros de las colectivas (03)?	Scatter/Gather no aceptan counts distintos por proceso; en vez de enviar bloque - padding al último rank, se agranda el arreglo a n_pad con ceros y todos reciben bloques iguales.	Codigo::Criterio
+Los 5 ejemplos comparten un mismo esqueleto de 3 fases. ¿Cuál es?	1) DISTRIBUIR los datos desde rank 0 (Send/Scatter/Bcast) → 2) CALCULAR en local cada rank su parte → 3) RECOLECTAR/COMBINAR en rank 0 (Recv/Gather/Reduce) e imprimir solo desde rank 0.	Codigo::Criterio
