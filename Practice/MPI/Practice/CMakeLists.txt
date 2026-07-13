@@ -51,3 +51,7 @@ target_link_libraries(10_estadisticas PRIVATE fmt::fmt ${MPI_LIB}/impi.lib)
 add_executable(11_vocales 11_vocales.cpp)
 target_include_directories(11_vocales PRIVATE ${MPI_INCLUDE})
 target_link_libraries(11_vocales PRIVATE fmt::fmt ${MPI_LIB}/impi.lib)
+
+add_executable(12_vocales_colectivas 12_vocales_colectivas.cpp)
+target_include_directories(12_vocales_colectivas PRIVATE ${MPI_INCLUDE})
+target_link_libraries(12_vocales_colectivas PRIVATE fmt::fmt ${MPI_LIB}/impi.lib)
