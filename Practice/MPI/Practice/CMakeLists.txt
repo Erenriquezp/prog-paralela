@@ -55,3 +55,19 @@ target_link_libraries(11_vocales PRIVATE fmt::fmt ${MPI_LIB}/impi.lib)
 add_executable(12_vocales_colectivas 12_vocales_colectivas.cpp)
 target_include_directories(12_vocales_colectivas PRIVATE ${MPI_INCLUDE})
 target_link_libraries(12_vocales_colectivas PRIVATE fmt::fmt ${MPI_LIB}/impi.lib)
+
+add_executable(13_imagen 13_imagen.cpp)
+target_include_directories(13_imagen PRIVATE ${MPI_INCLUDE})
+target_link_libraries(13_imagen PRIVATE fmt::fmt ${MPI_LIB}/impi.lib)
+
+add_executable(14_imagen_colectivas 14_imagen_colectivas.cpp)
+target_include_directories(14_imagen_colectivas PRIVATE ${MPI_INCLUDE})
+target_link_libraries(14_imagen_colectivas PRIVATE fmt::fmt ${MPI_LIB}/impi.lib)
+
+add_executable(15_matriz_vector 15_matriz_vector.cpp)
+target_include_directories(15_matriz_vector PRIVATE ${MPI_INCLUDE})
+target_link_libraries(15_matriz_vector PRIVATE fmt::fmt ${MPI_LIB}/impi.lib)
+
+add_executable(16_matriz_matriz 16_matriz_matriz.cpp)
+target_include_directories(16_matriz_matriz PRIVATE ${MPI_INCLUDE})
+target_link_libraries(16_matriz_matriz PRIVATE fmt::fmt ${MPI_LIB}/impi.lib)

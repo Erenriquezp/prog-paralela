@@ -1,0 +1,128 @@
+#include <iostream>
+#include <fmt/core.h>
+#include <mpi.h>
+#include <vector>
+#include <cmath>
+#include <algorithm>
+
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "stb_image_write.h"
+
+// Modificamos la función para que mantenga la estructura de 4 canales en la salida local
+void convertir_porcion_a_gris(const std::vector<uint8_t> &rgba_local,
+                              std::vector<uint8_t> &gris_local,
+                              int filas,
+                              int columnas)
+{
+    for (int i = 0; i < filas * columnas; i++)
+    {
+        int index = i * 4;
+
+        uint8_t r = rgba_local[index];
+        uint8_t g = rgba_local[index + 1];
+        uint8_t b = rgba_local[index + 2];
+
+        // Fórmula exacta del examen
+        double valor_gris = 0.21 * r + 0.72 * g + 0.07 * b;
+        uint8_t gris_final = (uint8_t)valor_gris;
+
+        // Guardamos el mismo valor gris en los componentes R, G, B para mantener los 4 canales
+        gris_local[index] = gris_final;
+        gris_local[index + 1] = gris_final;
+        gris_local[index + 2] = gris_final;
+    }
+}
+
+int main(int argc, char **argv)
+{
+    MPI_Init(&argc, &argv);
+
+    int nprocs, rank;
+    MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+    int ancho = 0;
+    int alto = 0;
+    int canales = 0;
+
+    uint8_t *pixeles_rgba_disco = nullptr;
+    if (rank == 0)
+    {
+        pixeles_rgba_disco = stbi_load("original.jpg", &ancho, &alto, &canales, STBI_rgb_alpha);
+        canales = 4; // Exigido por el examen[cite: 1]
+    }
+
+    MPI_Bcast(&ancho, 1, MPI_INT, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&alto, 1, MPI_INT, 0, MPI_COMM_WORLD);
+
+    // --- MATEMÁTICA IDÉNTICA A TU PLANTILLA DE MATRICES ---
+    int rows_per_rank = std::ceil(alto * 1.0 / nprocs);
+    int total_rows = rows_per_rank * nprocs;
+    int padding = total_rows - alto;
+
+    // Declaración con la estructura de la plantilla (Usamos 4 canales en ambos vectores para que la geometría calce perfecto)
+    std::vector<uint8_t> A(total_rows * ancho * 4, 0);
+    std::vector<uint8_t> x(total_rows * ancho * 4, 0);
+
+    if (rank == 0)
+    {
+        // Bucle manual para pasar los bytes del disco al vector global A
+        int total_bytes_rgba = ancho * alto * 4;
+        for (int i = 0; i < total_bytes_rgba; i++)
+        {
+            A[i] = pixeles_rgba_disco[i];
+        }
+    }
+
+    // Vectores locales del mismo tamaño exacto (Evita cualquier error de desalineación en la red)
+    std::vector<uint8_t> A_local(rows_per_rank * ancho * 4);
+    std::vector<uint8_t> x_local(rows_per_rank * ancho * 4);
+
+    // --- COLECTIVA 2: SCATTER ---
+    MPI_Scatter(
+        A.data(),
+        rows_per_rank * ancho * 4,
+        MPI_UINT8_T,
+        A_local.data(),
+        rows_per_rank * ancho * 4,
+        MPI_UINT8_T,
+        0,
+        MPI_COMM_WORLD);
+
+    // --- CÁLCULO PARALELO LOCAL ---
+    convertir_porcion_a_gris(A_local, x_local, rows_per_rank, ancho);
+
+    // --- COLECTIVA 3: GATHER ---
+    // Al usar los mismos tamaños exactos del Scatter, MPI une la memoria a la perfección sin romper bytes
+    MPI_Gather(
+        x_local.data(),
+        rows_per_rank * ancho * 4,
+        MPI_UINT8_T,
+        x.data(),
+        rows_per_rank * ancho * 4,
+        MPI_UINT8_T,
+        0,
+        MPI_COMM_WORLD);
+
+    // --- SECCIÓN DE GUARDADO FINAL ---
+    if (rank == 0)
+    {
+        // El examen te pide guardar la imagen en formato escala de grises (STBI_grey = 1 canal)[cite: 1]
+        // Así que el maestro simplemente extrae el canal R (o G o B, ya que son iguales) del vector x unificado.
+        std::vector<uint8_t> imagen_final_sin_padding(ancho * alto * 1);
+
+        for (int i = 0; i < ancho * alto; i++)
+        {
+            // Tomamos el byte correspondiente del bloque RGBA (el primero de cada 4 bytes)
+            imagen_final_sin_padding[i] = x[i * 4];
+        }
+
+        // Guardamos el resultado limpio sin residuos de padding
+        stbi_write_png("img-gris.png", ancho, alto, STBI_grey, imagen_final_sin_padding.data(), ancho);
+    }
+
+    MPI_Finalize();
+    return 0;
+}

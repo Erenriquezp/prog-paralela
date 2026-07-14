@@ -1,0 +1,166 @@
+#include <iostream>
+#include <fmt/core.h>
+#include <mpi.h>
+#include <vector>
+#include <cmath>
+#include <algorithm>
+
+// Librerías solicitadas en el examen
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "stb_image_write.h"
+
+void multiplicar_matriz_vector(const std::vector<uint8_t> &matriz,
+                               std::vector<uint8_t> &resultado,
+                               int filas,
+                               int columnas)
+{
+    for (int i = 0; i < filas; i++)
+    {
+        for (int j = 0; j < columnas; j++)
+        {
+            // Cálculo del índice plano del píxel (i, j) en 4 canales
+            int index = (i * columnas + j) * 4;
+
+            uint8_t r = matriz[index];
+            uint8_t g = matriz[index + 1];
+            uint8_t b = matriz[index + 2];
+            uint8_t a = matriz[index + 3];
+
+            // Fórmula de escala de grises
+            double valor_gris = 0.21 * r + 0.72 * g + 0.07 * b;
+            uint8_t gris = (uint8_t)valor_gris;
+
+            // Almacenamos manteniendo los 4 canales de salida para la estructura simétrica
+            resultado[index] = gris;
+            resultado[index + 1] = gris;
+            resultado[index + 2] = gris;
+            resultado[index + 3] = a;
+        }
+    }
+}
+
+int main(int argc, char **argv)
+{
+    MPI_Init(&argc, &argv);
+
+    int nprocs, rank;
+    MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+    // Dimensiones que los esclavos sabrán al recibir el mensaje inicial
+    int ancho = 0;
+    int alto = 0;
+
+    if (rank == 0)
+    {
+        int canales = 0;
+        uint8_t *rgba_pixel = stbi_load("original.jpg", &ancho, &alto, &canales, STBI_rgb_alpha);
+
+        int rows_per_rank = std::ceil(alto * 1.0 / nprocs);
+        int total_rows = rows_per_rank * nprocs;
+        int padding = total_rows - alto;
+
+        // --- ENFOQUE DE TU PLANTILLA: VECTORES GLOBALES DENTRO DEL IF ---
+        std::vector<uint8_t> A(total_rows * ancho * 4, 0);
+        std::vector<uint8_t> x(total_rows * ancho * 4, 0);
+
+        // Pasar los bytes de la imagen leída al vector global A
+        int total_pixel_rgba = alto * ancho * 4;
+        for (int i = 0; i < total_pixel_rgba; i++)
+        {
+            A[i] = rgba_pixel[i];
+        }
+
+        // Enviar datos a los esclavos (ranks 1 hasta nprocs-1)
+        for (int i = 1; i < nprocs; i++)
+        {
+            // Enviar las dimensiones (Ancho y filas por rango)
+            std::vector<int> data = {ancho, rows_per_rank};
+            MPI_Send(
+                data.data(),
+                data.size(),
+                MPI_INT,
+                i,
+                0,
+                MPI_COMM_WORLD);
+
+            const uint8_t *buffer = A.data();
+            MPI_Send(
+                &buffer[i * rows_per_rank * ancho * 4],
+                rows_per_rank * ancho * 4,
+                MPI_UINT8_T,
+                i,
+                0,
+                MPI_COMM_WORLD);
+        }
+
+        // El maestro procesa su propia porción local directamente
+        multiplicar_matriz_vector(A, x, rows_per_rank, ancho);
+
+        // Recibir resultados locales de cada rank esclavo
+        for (int i = 1; i < nprocs; i++)
+        {
+            MPI_Recv(
+                &x[i * rows_per_rank * ancho * 4],
+                rows_per_rank * ancho * 4,
+                MPI_UINT8_T,
+                i,
+                0,
+                MPI_COMM_WORLD,
+                MPI_STATUS_IGNORE);
+        }
+
+        // --- PROCESAMIENTO Y GUARDADO FINAL DEL ARCHIVO ---
+        std::vector<uint8_t> gray_pixels(ancho * alto * 1);
+        for (int i = 0; i < ancho * alto; i++)
+        {
+            gray_pixels[i] = x[i * 4];
+        }
+        stbi_write_png("img-gris2.png", ancho, alto, STBI_grey, gray_pixels.data(), ancho);
+    }
+    else
+    {
+        // Bloque para los Ranks esclavos (rank != 0)
+        std::vector<int> data_rec(2);
+        MPI_Recv(
+            data_rec.data(),
+            2,
+            MPI_INT,
+            0,
+            0,
+            MPI_COMM_WORLD,
+            MPI_STATUS_IGNORE);
+
+        int columnas = data_rec[0]; // Equivale a 'ancho'
+        int filas = data_rec[1];    // Equivale a 'rows_per_rank'
+
+        std::vector<uint8_t> A_local(filas * columnas * 4);
+
+        // Recibir sub-porcion de la imagen
+        MPI_Recv(
+            A_local.data(),
+            filas * columnas * 4,
+            MPI_UINT8_T,
+            0,
+            0,
+            MPI_COMM_WORLD,
+            MPI_STATUS_IGNORE);
+
+        std::vector<uint8_t> x_local(filas * columnas * 4);
+        multiplicar_matriz_vector(A_local, x_local, filas, columnas);
+
+        // Enviar porción gris de vuelta al maestro (rank 0)
+        MPI_Send(
+            x_local.data(),
+            filas * columnas * 4,
+            MPI_UINT8_T,
+            0,
+            0,
+            MPI_COMM_WORLD);
+    }
+
+    MPI_Finalize();
+    return 0;
+}
