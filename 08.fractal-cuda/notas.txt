@@ -1,0 +1,5 @@
+Visual Studio 2022 / x64 Native Tools Command Prompt for VS 2022
+C:\Program Files\Microsoft Visual Studio\2022\Community>
+c:\tools\vcpkg-2026.03.18>vcpkg.exe install fmt:x64-windows
+C:\tools\prog-paralela\07.cuda>set PATH=c:/tools/mingw64/bin;%PATH%
+C:\tools\prog-paralela\07.cuda>code .
