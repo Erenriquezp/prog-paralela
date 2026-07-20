@@ -314,7 +314,7 @@ int main(int argc, char **argv)
         row_end = Ny;
     }
 
-    // Reservar memoria del buffer de píxeles local de forma dinámica
+    // Reservar memoria del buffer de píxeles local
     pixel_buffer = new uint32_t[Nx * delta];
     std::memset(pixel_buffer, 0, Nx * delta * sizeof(uint32_t));
 

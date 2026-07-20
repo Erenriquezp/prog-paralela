@@ -1,23 +1,5 @@
 #include "palette.h"
 
-/*
-#FFFFCC
-#FFF5B5
-#FFEC9D
-#FEE187
-#FED470
-#FEBF5A
-#FEAB49
-#FD9740
-#FD7C37
-#FC5B2E
-#F43D25
-#E6211E
-#D41020
-#C00225
-#A10026
-#800026
-*/
 uint32_t bswap32(uint32_t a)
 {
     return ((a & 0x000000FF) << 24) |

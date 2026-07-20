@@ -15,7 +15,6 @@
 #include <windows.h>
 #endif
 
-// Dimensiones de la Ventana SFML
 #define ANCHO 1600
 #define ALTO 900
 

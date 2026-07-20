@@ -47,7 +47,7 @@ void calor_openmp_regiones(const float* u_antiguo, float* u_nuevo, uint32_t colu
     // Calcular residuo norma L2
     residuo = std::sqrt(suma_diferencias / (columnas_x * filas_y));
 
-    // 2. Mapear temperaturas a colores de píxeles usando división manual de regiones de OpenMP
+    // 2. Mapear temperaturas a colores de píxeles
 #pragma omp parallel
     {
         int cantidad_hilos = omp_get_num_threads();

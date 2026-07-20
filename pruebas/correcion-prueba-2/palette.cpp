@@ -1,22 +1,3 @@
-/*#FFFFCC
-#FFF5B5
-#FFEC9D
-#FEE187
-#FED470
-#FEBF5A
-#FEAB49
-#FD9740
-#FD7C37
-#FD7C37
-#FC5B2E
-#F43D25
-#E6211E
-#D41020
-#C00225
-#A10026
-#800026
-*/
-
 #include "palette.h"
 
 uint32_t bswap32(uint32_t a) {
@@ -27,8 +8,6 @@ uint32_t bswap32(uint32_t a) {
 }
 
 std::vector<uint32_t> color_ramp = {
-    // Añadir el canal alfa FF al final de cada color y poner 0xFF al principio para indicar que es un color RGBA
-    // Operacion a nivel de bits: 0xFF000000 | 0x00FF0000 | 0x0000FF00 | 0x000000FF
     bswap32(0xFF1010FF), // 0xFF1010FF
     bswap32(0xEF1019FF), // 0xEF1019FF
     bswap32(0xE01123FF), // 0xE01123FF

@@ -73,7 +73,6 @@ void calor_simd(const float* u_antiguo, float* u_nuevo, uint32_t columnas_x, uin
         }
     }
 
-    // Calcular residuo norma L2
     residuo = std::sqrt(suma_diferencias / (columnas_x * filas_y));
 
     // 2. Mapear temperaturas a colores de píxeles

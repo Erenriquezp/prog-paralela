@@ -43,3 +43,7 @@ Thumbs.db
 
 CLAUDE.md
 .claude
+
+*.zip
+*.pdf
+*.mkv
